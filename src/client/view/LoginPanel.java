@@ -49,7 +49,10 @@ public class LoginPanel extends JPanel {
 
         jButtonLogin.addActionListener(e -> {
             try {
-                performLogin(jTextFieldUsername.getText(), new String(jPasswordField.getPassword()));
+                boolean isLogged = performLogin(jTextFieldUsername.getText(), new String(jPasswordField.getPassword()));
+                if (isLogged) {
+                    viewController.createUserListFrame();
+                }
             } catch (IOException ex) {
                 ex.printStackTrace();
             }
@@ -59,7 +62,7 @@ public class LoginPanel extends JPanel {
 
     private boolean performLogin(String username, String password) throws IOException {
 
-        if (chatClient.logowanie(username, password)) {
+        if (chatClient.login(username, password)) {
             System.out.println("zalogowano");
             return true;
         } else {

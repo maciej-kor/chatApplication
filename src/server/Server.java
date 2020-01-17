@@ -40,6 +40,8 @@ public class Server extends Thread{
 
     private void fillUserMap(){
 
+        userMap.put("a", "a");
+        userMap.put("b", "b");
         userMap.put("Maciek", "maciek");
         userMap.put("grzesiek", "grzesiek1");
         userMap.put("johny", "John");

@@ -43,31 +43,34 @@ public class ServerThread extends Thread {
 
         while (clientSocket.getInputStream() != null) {
 
-            if (scanner.hasNextLine())
+            while (scanner.hasNextLine()) {
                 line = scanner.nextLine();
 
-            String[] tokens = line.split(" ", 4);
+                System.out.println(line);
 
-            if (tokens.length > 0) {
+                String[] tokens = line.split(" ", 4);
 
-                String cmd = tokens[0];
+                if (tokens.length > 0) {
 
-                if (cmd.equals(QUIT_COMMAND) || cmd.equals(LOGOUT_COMMAND)) {
-                    handleLogOff();
-                    break;
-                } else if (cmd.equals(LOGIN_COMMAND)) {
-                    handleLogin(tokens);
-                } else if (cmd.equals(MESSAGE_COMMAND)) {
-                    handleMessage(tokens);
-                } else if (cmd.equals(JOIN_COMMAND)) {
-                    handleJoin(tokens);
-                } else if (cmd.equals(LEAVE_COMMAND)) {
-                    handleLeave(tokens);
-                }else if (cmd.equals("getAllUsers")){
-                    handleGetUsers();
-                } else {
-                    String msg = "unknown " + cmd + "\n";
-                    wysylanieWiadomosci(msg);
+                    String cmd = tokens[0];
+
+                    if (cmd.equals(QUIT_COMMAND) || cmd.equals(LOGOUT_COMMAND)) {
+                        handleLogOff();
+                        break;
+                    } else if (cmd.equals(LOGIN_COMMAND)) {
+                        handleLogin(tokens);
+                    } else if (cmd.equals(MESSAGE_COMMAND)) {
+                        handleMessage(tokens);
+                    } else if (cmd.equals(JOIN_COMMAND)) {
+                        handleJoin(tokens);
+                    } else if (cmd.equals(LEAVE_COMMAND)) {
+                        handleLeave(tokens);
+                    } else if (cmd.equals("getAllUsers")) {
+                        handleGetUsers();
+                    } else {
+                        String msg = "unknown " + cmd + "\n";
+                        wysylanieWiadomosci(msg);
+                    }
                 }
             }
         }
@@ -77,12 +80,23 @@ public class ServerThread extends Thread {
     private void handleGetUsers() throws IOException {
         StringBuilder msg = new StringBuilder();
 
-        for (String s : server.getUserMap().keySet()){
-                msg.append("list ");
-                msg.append(s);
-                msg.append('\n');
+        for (String s : server.getUserMap().keySet()) {
+            msg.append("list ");
+            msg.append(s);
+            msg.append('\n');
         }
+
+        msg.append("end");
+        msg.append('\n');
+
         wysylanieWiadomosci(msg.toString());
+
+        try {
+            sendUsersOnlineStatus();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
     }
 
     private void handleLeave(String[] tokens) {
@@ -140,13 +154,13 @@ public class ServerThread extends Thread {
 
                 List<ServerThread> workerList = server.getServerList();
 
-                for (ServerThread serverThread : workerList) {
-                    if (serverThread.getLogin() != null) {
-                        String msg2 = "online " + serverThread.getLogin();
-                        wysylanieWiadomosci(msg2);
-                    }
-                }
-
+//                for (ServerThread serverThread : workerList) {
+//                    if (serverThread.getLogin() != null) {
+//                        String msg2 = "online " + serverThread.getLogin();
+//                        wysylanieWiadomosci(msg2);
+//                    }
+//                }
+//
                 for (ServerThread serverThread : workerList) {
                     serverThread.wysylanieWiadomosci(onlineMsg);
                 }
@@ -171,9 +185,23 @@ public class ServerThread extends Thread {
         clientSocket.close();
     }
 
+    private void sendUsersOnlineStatus() throws IOException, InterruptedException {
+
+        List<ServerThread> workerList = server.getServerList();
+Thread.sleep(100);
+        for (ServerThread serverThread : workerList) {
+            if (serverThread.getLogin() != null) {
+                String msg = "online " + serverThread.getLogin();
+                wysylanieWiadomosci(msg);
+            }
+        }
+
+    }
+
     private void wysylanieWiadomosci(String message) throws IOException {
         OutputStream outputStream = clientSocket.getOutputStream();
         PrintWriter printWriter = new PrintWriter(outputStream);
+        System.out.println(message);
         printWriter.print(message);
         printWriter.flush();
     }
