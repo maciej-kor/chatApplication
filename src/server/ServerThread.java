@@ -2,10 +2,7 @@ package server;
 
 import java.io.*;
 import java.net.Socket;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Scanner;
-import java.util.Set;
+import java.util.*;
 
 public class ServerThread extends Thread {
 
@@ -19,7 +16,6 @@ public class ServerThread extends Thread {
     private final String QUIT_COMMAND = "quit";
     private final String MESSAGE_COMMAND = "msg";
     private final String LEAVE_COMMAND = "leave";
-    private final String JOIN_COMMAND = "join";
 
     public ServerThread(Server server, Socket clientSocket) {
         this.server = server;
@@ -39,16 +35,19 @@ public class ServerThread extends Thread {
 
         Scanner scanner = new Scanner(clientSocket.getInputStream());
 
-        String line = null;
+        String line;
+
+        int i = 0;
 
         while (clientSocket.getInputStream() != null) {
-
+            System.out.println(i++);
             while (scanner.hasNextLine()) {
                 line = scanner.nextLine();
 
                 System.out.println(line);
 
-                String[] tokens = line.split(" ", 4);
+                String[] tokens = line.split(" ", 3);
+                System.out.println(Arrays.toString(tokens));
 
                 if (tokens.length > 0) {
 
@@ -56,13 +55,11 @@ public class ServerThread extends Thread {
 
                     if (cmd.equals(QUIT_COMMAND) || cmd.equals(LOGOUT_COMMAND)) {
                         handleLogOff();
-                        break;
+                        return;
                     } else if (cmd.equals(LOGIN_COMMAND)) {
                         handleLogin(tokens);
                     } else if (cmd.equals(MESSAGE_COMMAND)) {
                         handleMessage(tokens);
-                    } else if (cmd.equals(JOIN_COMMAND)) {
-                        handleJoin(tokens);
                     } else if (cmd.equals(LEAVE_COMMAND)) {
                         handleLeave(tokens);
                     } else if (cmd.equals("getAllUsers")) {
@@ -79,6 +76,7 @@ public class ServerThread extends Thread {
 
     private void handleGetUsers() throws IOException {
         StringBuilder msg = new StringBuilder();
+        List<ServerThread> workerList = server.getServerList();
 
         for (String s : server.getUserMap().keySet()) {
             msg.append("list ");
@@ -86,16 +84,22 @@ public class ServerThread extends Thread {
             msg.append('\n');
         }
 
-        msg.append("end");
+        msg.append("endlist");
         msg.append('\n');
-
         wysylanieWiadomosci(msg.toString());
+        msg.setLength(0);
 
-        try {
-            sendUsersOnlineStatus();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+        for (ServerThread serverThread : workerList) {
+            if (serverThread.getLogin() != null) {
+                msg.append("online ");
+                msg.append(serverThread.getLogin());
+                msg.append('\n');
+            }
         }
+
+        msg.append("endonline");
+        msg.append('\n');
+        wysylanieWiadomosci(msg.toString());
 
     }
 
@@ -106,38 +110,19 @@ public class ServerThread extends Thread {
         }
     }
 
-    public boolean isMemberOfTopic(String topic) {
-        return topicSet.contains(topic);
-    }
-
-    private void handleJoin(String[] tokens) {
-        if (tokens.length > 1) {
-            String topic = tokens[1];
-            topicSet.add(topic);
-        }
-    }
-
     private void handleMessage(String[] tokens) throws IOException {
         String sendTo = tokens[1];
         String body = tokens[2];
 
-        boolean isTopic = (sendTo.charAt(0) == '#');
-
         List<ServerThread> serverThreadList = server.getServerList();
 
         for (ServerThread serverThread : serverThreadList) {
-            if (isTopic) {
-                if (serverThread.isMemberOfTopic(sendTo)) {
-                    String outMsg = "msg " + sendTo + ":" + login + " " + body + "\n";
-                    serverThread.wysylanieWiadomosci(outMsg);
-                }
-            } else {
-                if (sendTo.equals(serverThread.getLogin())) {
-                    String outMsg = "msg " + login + " " + body + "\n";
-                    serverThread.wysylanieWiadomosci(outMsg);
-                }
+            if (sendTo.equals(serverThread.getLogin())) {
+                String outMsg = "msg " + login + " " + body + "\n";
+                serverThread.wysylanieWiadomosci(outMsg);
             }
         }
+
     }
 
     private void handleLogin(String[] tokens) throws IOException {
@@ -154,13 +139,6 @@ public class ServerThread extends Thread {
 
                 List<ServerThread> workerList = server.getServerList();
 
-//                for (ServerThread serverThread : workerList) {
-//                    if (serverThread.getLogin() != null) {
-//                        String msg2 = "online " + serverThread.getLogin();
-//                        wysylanieWiadomosci(msg2);
-//                    }
-//                }
-//
                 for (ServerThread serverThread : workerList) {
                     serverThread.wysylanieWiadomosci(onlineMsg);
                 }
@@ -174,7 +152,6 @@ public class ServerThread extends Thread {
     }
 
     private void handleLogOff() throws IOException {
-        server.removeServerThread(this);
         List<ServerThread> workerList = server.getServerList();
         String onlineMsg = "offline " + login + "\n";
         for (ServerThread serverThread : workerList) {
@@ -182,20 +159,8 @@ public class ServerThread extends Thread {
                 serverThread.wysylanieWiadomosci(onlineMsg);
             }
         }
+        server.removeServerThread(this);
         clientSocket.close();
-    }
-
-    private void sendUsersOnlineStatus() throws IOException, InterruptedException {
-
-        List<ServerThread> workerList = server.getServerList();
-Thread.sleep(100);
-        for (ServerThread serverThread : workerList) {
-            if (serverThread.getLogin() != null) {
-                String msg = "online " + serverThread.getLogin();
-                wysylanieWiadomosci(msg);
-            }
-        }
-
     }
 
     private void wysylanieWiadomosci(String message) throws IOException {
@@ -204,17 +169,6 @@ Thread.sleep(100);
         System.out.println(message);
         printWriter.print(message);
         printWriter.flush();
-    }
-
-    private String odebranieWiadomosci() throws IOException {
-        InputStream inputStream = clientSocket.getInputStream();
-        Scanner scanner = new Scanner(inputStream);
-        StringBuilder stringBuilder = new StringBuilder();
-
-        while (scanner.hasNextLine()) {
-            stringBuilder.append(scanner.nextLine());
-        }
-        return stringBuilder.toString();
     }
 
 

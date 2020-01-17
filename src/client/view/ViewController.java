@@ -1,6 +1,6 @@
 package client.view;
 
-import client.ChatClient;
+import client.Controller;
 
 import javax.swing.*;
 import java.awt.event.WindowAdapter;
@@ -10,22 +10,22 @@ import java.util.List;
 
 public class ViewController {
 
-    private ChatClient chatClient;
-
     private MainFrame jFrame;
-
     private List<String> openChatList = new ArrayList<>();
+    private Controller controller;
+    private UsersListPanel usersListPanel;
+    private List<ChatPanel> chatPanelList = new ArrayList<>();
 
-    public ViewController(ChatClient chatClient) {
-        this.chatClient = chatClient;
+    public ViewController(Controller controller) {
+        this.controller = controller;
         createHelloFrame();
     }
 
-    private void createHelloFrame() {
+    public void createHelloFrame() {
 
         jFrame = new MainFrame();
         jFrame.setTitle("Login Panel");
-        LoginPanel loginPanel = new LoginPanel(chatClient, this);
+        LoginPanel loginPanel = new LoginPanel(this, controller);
         jFrame.add(loginPanel);
         jFrame.pack();
         jFrame.centreFrame();
@@ -37,28 +37,35 @@ public class ViewController {
 
         jFrame.setVisible(false);
         jFrame = new MainFrame();
-        jFrame.setTitle("All users " + chatClient.getUserName());
-        UsersListPanel usersListPanel = new UsersListPanel(chatClient, this);
+        jFrame.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                controller.wyloguj();
+            }
+        });
+        jFrame.setTitle("All users " + controller.pobierzLoginUzytkownika());
+        usersListPanel = new UsersListPanel(this, controller);
         jFrame.add(usersListPanel);
         jFrame.pack();
         jFrame.centreFrame();
 
     }
 
-    public void createChatWindow(String sender, String receiver){
+    public void createChatWindow(String sendTo){
 
-        if (!openChatList.contains(receiver)) {
-            openChatList.add(receiver);
+        if (!openChatList.contains(sendTo)) {
+            openChatList.add(sendTo);
             MainFrame chatFrame = new MainFrame();
             chatFrame.addWindowListener(new WindowAdapter() {
                 @Override
                 public void windowClosing(WindowEvent e) {
-                    openChatList.remove(receiver);
+                    openChatList.remove(sendTo);
                 }
             });
 
-            chatFrame.setTitle("ChatApp - " + receiver);
-            ChatPanel chatPanel = new ChatPanel(sender, receiver, chatClient, this);
+            chatFrame.setTitle("ChatApp - " + sendTo);
+            ChatPanel chatPanel = new ChatPanel(sendTo, controller);
+            chatPanelList.add(chatPanel);
             chatFrame.add(chatPanel);
             chatFrame.pack();
             chatFrame.centreFrame();
@@ -66,4 +73,19 @@ public class ViewController {
     }
 
 
+    public UsersListPanel getUsersListPanel() {
+        return usersListPanel;
+    }
+
+    public void setUsersListPanel(UsersListPanel usersListPanel) {
+        this.usersListPanel = usersListPanel;
+    }
+
+    public List<ChatPanel> getChatPanelList() {
+        return chatPanelList;
+    }
+
+    public void setChatPanelList(List<ChatPanel> chatPanelList) {
+        this.chatPanelList = chatPanelList;
+    }
 }

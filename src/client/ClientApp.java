@@ -11,10 +11,9 @@ public class ClientApp {
 
     public static void main(String[] args) {
 
-        ChatClient chatClient = new ChatClient(SERVER_NAME, SERVER_PORT);
-
-        EventQueue.invokeLater(() -> new ViewController(chatClient));
-
+        EventQueue.invokeLater(() -> new Controller());
     }
 
 }
+
+

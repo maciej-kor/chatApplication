@@ -4,9 +4,7 @@ import client.view.ChatPanel;
 
 import java.io.*;
 import java.net.Socket;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Scanner;
+import java.util.*;
 
 public class ChatClient {
 
@@ -16,55 +14,30 @@ public class ChatClient {
     private List<UserStatusListener> userStatusListeners = new ArrayList<>();
     private List<MessageListener> messageListeners = new ArrayList<>();
     private final String LOGIN_SUCCESSFUL = "ok login";
-
-    private List<String> userList = new ArrayList<>();
-    private List<String> onlineList = new ArrayList<>();
-
-    private String userName;
-
-
+    private Controller controller;
+    private String nickName;
     private StringBuffer messageToSend = new StringBuffer();
 
+    private Map<String, Boolean> userListAndOnlineStatus = new TreeMap<>(new Comparator<String>() {
+        @Override
+        public int compare(String o1, String o2) {
+            return o1.compareToIgnoreCase(o2);
+        }
+    });
 
-    public ChatClient(String serverName, int serverPort) {
+
+    public ChatClient(String serverName, int serverPort, Controller controller) {
         this.serverName = serverName;
         this.serverPort = serverPort;
-
-        try {
-            wykonanieMetody();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
+        this.controller = controller;
     }
 
-    private void wykonanieMetody() throws IOException {
-        this.addUserStatusListener(new UserStatusListener() {
-            @Override
-            public void online(String login) {
-                System.out.println("ONLINE: " + login);
-            }
-
-            @Override
-            public void offline(String login) {
-                System.out.println("OFFLINE: " + login);
-            }
-        });
-
-        this.addMessageListener(new MessageListener() {
-            @Override
-            public void onMessage(String fromLogin, String msgBody) {
-                System.out.println("Message from " + fromLogin + " : " + msgBody);
-            }
-        });
-    }
-
-    public void msg(String sendTo, String msgBody) {
+    void msg(String sendTo, String msgBody) {
         String cmd = "msg " + sendTo + " " + msgBody;
         getMessageToSend().append(cmd);
     }
 
-    private void logOut() throws IOException {
+    public void logOut() throws IOException {
         String cmd = "logout";
         PrintWriter printWriter = new PrintWriter(socket.getOutputStream());
         printWriter.print(cmd);
@@ -90,11 +63,11 @@ public class ChatClient {
 
         PrintWriter printWriter = new PrintWriter(socket.getOutputStream());
 
-        while (socket.getOutputStream() != null){
+        while (socket.getOutputStream() != null) {
 
             Thread.sleep(1000);
 
-            if (getMessageToSend().length() != 0){
+            if (getMessageToSend().length() != 0) {
                 printWriter.println(getMessageToSend().toString());
                 printWriter.flush();
                 removeMessageToSend();
@@ -118,8 +91,9 @@ public class ChatClient {
             while (socket.getInputStream() != null) {
 
                 line = scanner.nextLine();
-                String[] tokens = line.split(" ", 4);
-                if (tokens != null && tokens.length > 0) {
+                String[] tokens = line.split(" ", 3);
+
+                if (tokens.length > 0) {
                     String cmd = tokens[0];
                     if (cmd.equals("online")) {
                         handleOnline(tokens);
@@ -132,10 +106,11 @@ public class ChatClient {
             }
         } catch (IOException e) {
             e.printStackTrace();
+        } finally {
             try {
                 socket.close();
-            } catch (IOException ex) {
-                ex.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
             }
         }
 
@@ -145,7 +120,7 @@ public class ChatClient {
         String login = tokens[1];
         String body = tokens[2];
 
-        ChatPanel.receiveMessage(body);
+        controller.odbierzWiadomosc(login, body);
 
         for (MessageListener messageListener : messageListeners) {
             messageListener.onMessage(login, body);
@@ -154,21 +129,17 @@ public class ChatClient {
     }
 
     private void handleOffline(String[] tokens) {
-        String login = tokens[1];
-        onlineList.remove(login);
 
-        for (UserStatusListener listener : userStatusListeners) {
-            listener.offline(login);
-        }
+        userListAndOnlineStatus.replace(tokens[1], false);
+        controller.aktualizujStatusLogowania();
+
     }
 
     private void handleOnline(String[] tokens) {
-        String login = tokens[1];
-        onlineList.add(login);
 
-        for (UserStatusListener listener : userStatusListeners) {
-            listener.online(login);
-        }
+        userListAndOnlineStatus.replace(tokens[1], true);
+        controller.aktualizujStatusLogowania();
+
     }
 
     private boolean connect() {
@@ -199,8 +170,9 @@ public class ChatClient {
 
             if (response.equals(LOGIN_SUCCESSFUL)) {
                 System.out.println("Login successful");
-                this.userName = nickName;
-                userList = getAllUsers();
+                this.nickName = nickName;
+
+                getAllUsers();
 
                 startMessageWriter();
                 startMessageReader();
@@ -214,6 +186,35 @@ public class ChatClient {
             return false;
         }
     }
+
+    public boolean getAllUsers() throws IOException {
+
+        String cmd = "getAllUsers";
+        PrintWriter printWriter = new PrintWriter(socket.getOutputStream());
+        printWriter.println(cmd);
+        printWriter.flush();
+
+        Scanner scannerResponse = new Scanner(socket.getInputStream());
+
+        while (scannerResponse.hasNextLine()) {
+
+            String line = scannerResponse.nextLine();
+            String[] tokens = line.split(" ");
+
+            if (tokens[0].equals("list")) {
+                userListAndOnlineStatus.put(tokens[1], false);
+            } else if (tokens[0].equals("online")) {
+                userListAndOnlineStatus.replace(tokens[1], true);
+            } else if (tokens[0].equals("endlist")) {
+                userListAndOnlineStatus.remove(nickName);
+            } else if (tokens[0].equals("endonline")) {
+                System.out.println("endonline" + userListAndOnlineStatus);
+                return true;
+            }
+        }
+        return true;
+    }
+
 
     public void addUserStatusListener(UserStatusListener listener) {
         userStatusListeners.add(listener);
@@ -231,46 +232,12 @@ public class ChatClient {
         messageListeners.remove(listener);
     }
 
-    public List<String> getAllUsers() throws IOException {
-
-        String cmd = "getAllUsers";
-        PrintWriter printWriter = new PrintWriter(socket.getOutputStream());
-        printWriter.println(cmd);
-        printWriter.flush();
-
-        List<String> usersList = new ArrayList<>();
-        Scanner scannerResponse = new Scanner(socket.getInputStream());
-
-        while (scannerResponse.hasNextLine()) {
-
-            String line = scannerResponse.nextLine();
-            String[] tokens = line.split(" ");
-
-            if (tokens[0].equals("list")) {
-                System.out.println(tokens[1]);
-                usersList.add(tokens[1]);
-            } else if (tokens[0].equals("end")) {
-                usersList.remove(userName);
-                return usersList;
-            }
-        }
-        return usersList;
+    public String getNickName() {
+        return nickName;
     }
 
-    public List<String> getUserList() {
-        return userList;
-    }
-
-    public void setUserList(List<String> userList) {
-        this.userList = userList;
-    }
-
-    public String getUserName() {
-        return userName;
-    }
-
-    public void setUserName(String userName) {
-        this.userName = userName;
+    public void setNickName(String nickName) {
+        this.nickName = nickName;
     }
 
     public StringBuffer getMessageToSend() {
@@ -285,11 +252,13 @@ public class ChatClient {
         this.messageToSend.setLength(0);
     }
 
-    public List<String> getOnlineList() {
-        return onlineList;
+
+    public Map<String, Boolean> getUserListAndOnlineStatus() {
+        return userListAndOnlineStatus;
     }
 
-    public void setOnlineList(List<String> onlineList) {
-        this.onlineList = onlineList;
+    public void setUserListAndOnlineStatus(Map<String, Boolean> userListAndOnlineStatus) {
+        this.userListAndOnlineStatus = userListAndOnlineStatus;
     }
+
 }

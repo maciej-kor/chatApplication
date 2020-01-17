@@ -1,7 +1,9 @@
 package client.view;
 
 import client.ChatClient;
+import client.Controller;
 
+import javax.naming.ldap.Control;
 import javax.swing.*;
 import java.awt.*;
 import java.io.IOException;
@@ -10,16 +12,17 @@ public class LoginPanel extends JPanel {
 
     private ChatClient chatClient;
     private ViewController viewController;
+    private Controller controller;
 
     private JLabel jLabelUsername, jLabelPassword;
     private JTextField jTextFieldUsername;
     private JPasswordField jPasswordField;
     private JButton jButtonLogin;
 
-    public LoginPanel(ChatClient chatClient, ViewController viewController) {
+    public LoginPanel(ViewController viewController, Controller controller) {
 
-        this.chatClient = chatClient;
         this.viewController = viewController;
+        this.controller = controller;
 
         this.setVisible(true);
         this.setLayout(null);
@@ -60,9 +63,9 @@ public class LoginPanel extends JPanel {
 
     }
 
-    private boolean performLogin(String username, String password) throws IOException {
+    private boolean performLogin(String nickName, String password) throws IOException {
 
-        if (chatClient.login(username, password)) {
+        if (controller.sprawdzDaneLogowania(nickName, password)) {
             System.out.println("zalogowano");
             return true;
         } else {
@@ -73,7 +76,6 @@ public class LoginPanel extends JPanel {
         }
         return false;
     }
-
 
     @Override
     public Dimension getPreferredSize() {

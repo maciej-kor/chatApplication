@@ -1,64 +1,86 @@
 package client.view;
 
-import client.ChatClient;
+import client.Controller;
 
 import javax.swing.*;
 import java.awt.*;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
+import java.util.*;
 import java.util.List;
 
 public class UsersListPanel extends JPanel {
 
-    private ChatClient chatClient;
     private ViewController viewController;
-    private List<String> userList;
+    private Controller controller;
+    private List<JButton> buttonList;
 
-    public UsersListPanel(ChatClient chatClient, ViewController viewController) {
+    private Map<String, Boolean> onlineStatusMap;
 
-        this.chatClient = chatClient;
+    public UsersListPanel(ViewController viewController, Controller controller) {
         this.viewController = viewController;
+        this.controller = controller;
 
         this.setVisible(true);
-
-        userList = chatClient.getUserList();
-        Collections.sort(userList, (a, b) -> a.compareToIgnoreCase(b));
-
         this.setLayout(null);
 
-        addButtons();
+        setOnlineStatusMap(controller.pobierzListeUzytkownikow());
 
-    }
-
-    private List<String> getUserList() throws IOException {
-        return chatClient.getAllUsers();
+        this.addButtons();
     }
 
     private void addButtons() {
 
-        List<JButton> buttonList = new ArrayList<>();
-        int x = 0, y = 50;
+        buttonList = new ArrayList<>();
+        int dx = 0, dy = 50;
+        int i = 0;
 
-        for (int i = 0; i < userList.size(); i++) {
-
+        for (String s : onlineStatusMap.keySet()) {
             JButton jButton = new JButton();
-            jButton.setText(userList.get(i));
-            jButton.setBounds(x * i, y * i, 150, 50);
-            jButton.addActionListener(e -> {
-                    viewController.createChatWindow(chatClient.getUserName(), jButton.getText());
+            jButton.setText(s);
+            jButton.setBounds(dx, dy * i, 250, 50);
+            jButton.addActionListener(e ->{
+                viewController.createChatWindow(jButton.getText());
             });
             buttonList.add(jButton);
             this.add(jButton);
-
+            i++;
         }
 
     }
 
+    public Map<String, Boolean> getOnlineStatusMap() {
+        return onlineStatusMap;
+    }
+
+    public void setOnlineStatusMap(Map<String, Boolean> onlineStatusMap) {
+        this.onlineStatusMap = onlineStatusMap;
+    }
+
+    @Override
+    protected void paintComponent(Graphics g) {
+
+        super.paintComponent(g);
+        int dy = 50;
+        int i = 0;
+
+        for (String s : onlineStatusMap.keySet()) {
+
+            if (onlineStatusMap.get(s)) {
+                g.setColor(Color.green);
+            } else {
+                g.setColor(Color.red);
+            }
+
+            g.fillRect(250, dy*i,50, 50);
+            g.setColor(Color.black);
+            g.drawRect(250, dy*i,50, 50);
+            i++;
+
+        }
+    }
+
     @Override
     public Dimension getPreferredSize() {
-        return new Dimension(200, 300);
+        return new Dimension(300, 300);
     }
 
 }
