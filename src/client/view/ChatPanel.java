@@ -1,14 +1,12 @@
 package client.view;
 
-import client.ChatClient;
-import client.Controller;
+import client.controller.Controller;
 
 import javax.swing.*;
 import java.awt.*;
 
 public class ChatPanel extends JPanel {
 
-    private String myNickName;
     private String sendToNickName;
     private Controller controller;
     private boolean openWindow;
@@ -45,7 +43,8 @@ public class ChatPanel extends JPanel {
 
     }
 
-    public void odbierzWiadomosc(String messageBody){
+    public void receiveMessage(String messageBody){
+        messageJTextArea.append(sendToNickName + ": ");
         messageJTextArea.append(messageBody);
         messageJTextArea.append("\n");
     }
@@ -55,7 +54,7 @@ public class ChatPanel extends JPanel {
         messageJTextArea.append(messageBody);
         messageJTextArea.append("\n");
 
-        controller.wyslijWiadomosc(sendToNickName, messageBody);
+        controller.sendMessage(sendToNickName, messageBody);
     }
 
     public boolean isOpenWindow() {

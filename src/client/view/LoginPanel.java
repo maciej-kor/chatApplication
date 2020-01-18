@@ -1,16 +1,15 @@
 package client.view;
 
-import client.ChatClient;
-import client.Controller;
+import client.model.ChatClient;
+import client.controller.Controller;
 
-import javax.naming.ldap.Control;
 import javax.swing.*;
 import java.awt.*;
 import java.io.IOException;
 
 public class LoginPanel extends JPanel {
 
-    private ChatClient chatClient;
+
     private ViewController viewController;
     private Controller controller;
 
@@ -65,11 +64,9 @@ public class LoginPanel extends JPanel {
 
     private boolean performLogin(String nickName, String password) throws IOException {
 
-        if (controller.sprawdzDaneLogowania(nickName, password)) {
-            System.out.println("zalogowano");
+        if (controller.checkLoginData(nickName, password)) {
             return true;
         } else {
-            System.out.println("nie zalogowano");
             JOptionPane.showMessageDialog(this, "Login error");
             jTextFieldUsername.setText("");
             jPasswordField.setText("");

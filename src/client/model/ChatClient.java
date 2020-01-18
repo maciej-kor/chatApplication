@@ -1,6 +1,6 @@
-package client;
+package client.model;
 
-import client.view.ChatPanel;
+import client.controller.Controller;
 
 import java.io.*;
 import java.net.Socket;
@@ -11,12 +11,11 @@ public class ChatClient {
     private String serverName;
     private int serverPort;
     private Socket socket;
-    private List<UserStatusListener> userStatusListeners = new ArrayList<>();
-    private List<MessageListener> messageListeners = new ArrayList<>();
     private final String LOGIN_SUCCESSFUL = "ok login";
     private Controller controller;
     private String nickName;
     private StringBuffer messageToSend = new StringBuffer();
+    private boolean exit = false;
 
     private Map<String, Boolean> userListAndOnlineStatus = new TreeMap<>(new Comparator<String>() {
         @Override
@@ -32,7 +31,7 @@ public class ChatClient {
         this.controller = controller;
     }
 
-    void msg(String sendTo, String msgBody) {
+    public void msg(String sendTo, String msgBody) {
         String cmd = "msg " + sendTo + " " + msgBody;
         getMessageToSend().append(cmd);
     }
@@ -42,6 +41,7 @@ public class ChatClient {
         PrintWriter printWriter = new PrintWriter(socket.getOutputStream());
         printWriter.print(cmd);
         printWriter.flush();
+        printWriter.close();
     }
 
 
@@ -63,7 +63,7 @@ public class ChatClient {
 
         PrintWriter printWriter = new PrintWriter(socket.getOutputStream());
 
-        while (socket.getOutputStream() != null) {
+        while (!exit && socket.getOutputStream() != null) {
 
             Thread.sleep(1000);
 
@@ -72,9 +72,7 @@ public class ChatClient {
                 printWriter.flush();
                 removeMessageToSend();
             }
-
         }
-
     }
 
     private void startMessageReader() {
@@ -84,23 +82,25 @@ public class ChatClient {
 
     private void readMessageLoop() {
         String line;
-        try {
 
+        try {
             Scanner scanner = new Scanner(socket.getInputStream());
 
-            while (socket.getInputStream() != null) {
+            while (socket.getInputStream() != null && !exit) {
 
-                line = scanner.nextLine();
-                String[] tokens = line.split(" ", 3);
+                if (scanner.hasNextLine()) {
+                    line = scanner.nextLine();
+                    String[] tokens = line.split(" ", 3);
 
-                if (tokens.length > 0) {
-                    String cmd = tokens[0];
-                    if (cmd.equals("online")) {
-                        handleOnline(tokens);
-                    } else if (cmd.equals("offline")) {
-                        handleOffline(tokens);
-                    } else if (cmd.equals("msg")) {
-                        handleMessage(tokens);
+                    if (tokens.length > 0) {
+                        String cmd = tokens[0];
+                        if (cmd.equals("online")) {
+                            handleOnline(tokens);
+                        } else if (cmd.equals("offline")) {
+                            handleOffline(tokens);
+                        } else if (cmd.equals("msg")) {
+                            handleMessage(tokens);
+                        }
                     }
                 }
             }
@@ -120,25 +120,20 @@ public class ChatClient {
         String login = tokens[1];
         String body = tokens[2];
 
-        controller.odbierzWiadomosc(login, body);
-
-        for (MessageListener messageListener : messageListeners) {
-            messageListener.onMessage(login, body);
-        }
-
+        controller.receiveMessage(login, body);
     }
 
     private void handleOffline(String[] tokens) {
 
         userListAndOnlineStatus.replace(tokens[1], false);
-        controller.aktualizujStatusLogowania();
+        controller.updateLoginStatus();
 
     }
 
     private void handleOnline(String[] tokens) {
 
         userListAndOnlineStatus.replace(tokens[1], true);
-        controller.aktualizujStatusLogowania();
+        controller.updateLoginStatus();
 
     }
 
@@ -215,23 +210,6 @@ public class ChatClient {
         return true;
     }
 
-
-    public void addUserStatusListener(UserStatusListener listener) {
-        userStatusListeners.add(listener);
-    }
-
-    public void removeUserStatusListener(UserStatusListener listener) {
-        userStatusListeners.remove(listener);
-    }
-
-    public void addMessageListener(MessageListener listener) {
-        messageListeners.add(listener);
-    }
-
-    public void removeMessageListener(MessageListener listener) {
-        messageListeners.remove(listener);
-    }
-
     public String getNickName() {
         return nickName;
     }
@@ -261,4 +239,11 @@ public class ChatClient {
         this.userListAndOnlineStatus = userListAndOnlineStatus;
     }
 
+    public boolean isExit() {
+        return exit;
+    }
+
+    public void setExit(boolean exit) {
+        this.exit = exit;
+    }
 }

@@ -14,7 +14,7 @@ public class Server extends Thread{
 
     private List<ServerThread> serverList = new ArrayList<>();
 
-    private static Map<String, String> userMap = new HashMap<>();
+    private Map<String, String> userMap = new HashMap<>();
 
     public Server(int serverPort) {
         this.serverPort = serverPort;
@@ -45,7 +45,6 @@ public class Server extends Thread{
         userMap.put("Maciek", "maciek");
         userMap.put("grzesiek", "grzesiek1");
         userMap.put("johny", "John");
-        userMap.put("ma", "ma");
 
     }
 

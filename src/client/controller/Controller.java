@@ -1,5 +1,6 @@
-package client;
+package client.controller;
 
+import client.model.ChatClient;
 import client.view.ChatPanel;
 import client.view.ViewController;
 
@@ -20,30 +21,30 @@ public class Controller {
         viewController = new ViewController(this);
     }
 
-    public void wyslijWiadomosc(String sendTo, String messageBody) {
+    public void sendMessage(String sendTo, String messageBody) {
 
         chatClient.msg(sendTo, messageBody);
 
     }
 
-    public void odbierzWiadomosc(String messageFrom, String messageBody) {
+    public void receiveMessage(String messageFrom, String messageBody) {
 
         List<ChatPanel> chatPanels = viewController.getChatPanelList();
-        for (ChatPanel chatPanel : chatPanels){
-            if (chatPanel.getSendToNickName().equals(messageFrom)){
-                chatPanel.odbierzWiadomosc(messageBody);
+        for (ChatPanel chatPanel : chatPanels) {
+            if (chatPanel.getSendToNickName().equals(messageFrom)) {
+                chatPanel.receiveMessage(messageBody);
             }
         }
 
     }
 
-    public Map<String, Boolean> pobierzListeUzytkownikow() {
+    public Map<String, Boolean> downloadUserList() {
 
         return chatClient.getUserListAndOnlineStatus();
 
     }
 
-    public boolean sprawdzDaneLogowania(String nickName, String password) {
+    public boolean checkLoginData(String nickName, String password) {
         try {
             return chatClient.login(nickName, password);
         } catch (IOException e) {
@@ -52,19 +53,23 @@ public class Controller {
         return false;
     }
 
-    public void wyloguj(){
+    public int logout() {
         try {
             chatClient.logOut();
         } catch (IOException e) {
             e.printStackTrace();
         }
+        chatClient.setExit(true);
+
+        return 0;
     }
 
-    public String pobierzLoginUzytkownika() {
+
+    public String downloadUsersLogin() {
         return chatClient.getNickName();
     }
 
-    public void aktualizujStatusLogowania() {
+    public void updateLoginStatus() {
         viewController.getUsersListPanel().repaint();
     }
 

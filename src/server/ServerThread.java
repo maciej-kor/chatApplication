@@ -9,17 +9,16 @@ public class ServerThread extends Thread {
     private Server server;
     private Socket clientSocket;
     private String login;
-    private Set<String> topicSet = new HashSet<>();
 
     private final String LOGIN_COMMAND = "login";
     private final String LOGOUT_COMMAND = "logout";
     private final String QUIT_COMMAND = "quit";
     private final String MESSAGE_COMMAND = "msg";
-    private final String LEAVE_COMMAND = "leave";
 
     public ServerThread(Server server, Socket clientSocket) {
         this.server = server;
         this.clientSocket = clientSocket;
+        System.out.println("sockeet: " + clientSocket);
     }
 
     @Override
@@ -37,10 +36,8 @@ public class ServerThread extends Thread {
 
         String line;
 
-        int i = 0;
-
         while (clientSocket.getInputStream() != null) {
-            System.out.println(i++);
+
             while (scanner.hasNextLine()) {
                 line = scanner.nextLine();
 
@@ -60,16 +57,15 @@ public class ServerThread extends Thread {
                         handleLogin(tokens);
                     } else if (cmd.equals(MESSAGE_COMMAND)) {
                         handleMessage(tokens);
-                    } else if (cmd.equals(LEAVE_COMMAND)) {
-                        handleLeave(tokens);
                     } else if (cmd.equals("getAllUsers")) {
                         handleGetUsers();
                     } else {
                         String msg = "unknown " + cmd + "\n";
-                        wysylanieWiadomosci(msg);
+                        sendMessage(msg);
                     }
                 }
             }
+
         }
         clientSocket.close();
     }
@@ -86,7 +82,7 @@ public class ServerThread extends Thread {
 
         msg.append("endlist");
         msg.append('\n');
-        wysylanieWiadomosci(msg.toString());
+        sendMessage(msg.toString());
         msg.setLength(0);
 
         for (ServerThread serverThread : workerList) {
@@ -99,15 +95,8 @@ public class ServerThread extends Thread {
 
         msg.append("endonline");
         msg.append('\n');
-        wysylanieWiadomosci(msg.toString());
+        sendMessage(msg.toString());
 
-    }
-
-    private void handleLeave(String[] tokens) {
-        if (tokens.length > 1) {
-            String topic = tokens[1];
-            topicSet.remove(topic);
-        }
     }
 
     private void handleMessage(String[] tokens) throws IOException {
@@ -119,10 +108,9 @@ public class ServerThread extends Thread {
         for (ServerThread serverThread : serverThreadList) {
             if (sendTo.equals(serverThread.getLogin())) {
                 String outMsg = "msg " + login + " " + body + "\n";
-                serverThread.wysylanieWiadomosci(outMsg);
+                serverThread.sendMessage(outMsg);
             }
         }
-
     }
 
     private void handleLogin(String[] tokens) throws IOException {
@@ -132,7 +120,7 @@ public class ServerThread extends Thread {
 
             if (server.checkUserData(login, password)) {
                 String msg = "ok login\n";
-                wysylanieWiadomosci(msg);
+                sendMessage(msg);
                 this.login = login;
 
                 String onlineMsg = "online " + login + "\n";
@@ -140,12 +128,12 @@ public class ServerThread extends Thread {
                 List<ServerThread> workerList = server.getServerList();
 
                 for (ServerThread serverThread : workerList) {
-                    serverThread.wysylanieWiadomosci(onlineMsg);
+                    serverThread.sendMessage(onlineMsg);
                 }
 
             } else {
                 String msg = "error login\n";
-                wysylanieWiadomosci(msg);
+                sendMessage(msg);
             }
 
         }
@@ -156,14 +144,15 @@ public class ServerThread extends Thread {
         String onlineMsg = "offline " + login + "\n";
         for (ServerThread serverThread : workerList) {
             if (!login.equals(serverThread.getLogin())) {
-                serverThread.wysylanieWiadomosci(onlineMsg);
+                serverThread.sendMessage(onlineMsg);
             }
         }
         server.removeServerThread(this);
+        clientSocket.getOutputStream().close();
         clientSocket.close();
     }
 
-    private void wysylanieWiadomosci(String message) throws IOException {
+    private void sendMessage(String message) throws IOException {
         OutputStream outputStream = clientSocket.getOutputStream();
         PrintWriter printWriter = new PrintWriter(outputStream);
         System.out.println(message);

@@ -1,6 +1,6 @@
 package client.view;
 
-import client.Controller;
+import client.controller.Controller;
 
 import javax.swing.*;
 import java.awt.*;
@@ -22,7 +22,7 @@ public class UsersListPanel extends JPanel {
         this.setVisible(true);
         this.setLayout(null);
 
-        setOnlineStatusMap(controller.pobierzListeUzytkownikow());
+        setOnlineStatusMap(controller.downloadUserList());
 
         this.addButtons();
     }

@@ -1,6 +1,6 @@
 package client.view;
 
-import client.Controller;
+import client.controller.Controller;
 
 import javax.swing.*;
 import java.awt.event.WindowAdapter;
@@ -40,10 +40,12 @@ public class ViewController {
         jFrame.addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
-                controller.wyloguj();
+                controller.logout();
+                jFrame.dispose();
+                createHelloFrame();
             }
         });
-        jFrame.setTitle("All users " + controller.pobierzLoginUzytkownika());
+        jFrame.setTitle("All users " + controller.downloadUsersLogin());
         usersListPanel = new UsersListPanel(this, controller);
         jFrame.add(usersListPanel);
         jFrame.pack();
